@@ -102,6 +102,7 @@ def test_can_load_wikipedia_sample():
 def wikipedia_documents():
     # documents = load_documents(DATASET_BIG_FPATH)
     documents = load_documents(DATASET_SMALL_FPATH)
+    # documents = load_documents(DATASET_TINY_FPATH)
     return documents
 
 
@@ -130,13 +131,11 @@ def small_wikipedia_inverted_index(small_sample_wikipedia_documents):
     return wikipedia_inverted_index
 
 
-@pytest.mark.skip
+# @pytest.mark.skip
 def test_can_dump_and_load_inverted_index(tmpdir, wikipedia_inverted_index):
     index_fio = tmpdir.join("index.dump")
     wikipedia_inverted_index.dump(index_fio)
-    print(type(wikipedia_inverted_index))
     loaded_inverted_index = InvertedIndex.load(index_fio)
-    print(type(loaded_inverted_index))
     assert wikipedia_inverted_index == loaded_inverted_index, (
         "load should return the same inverted index"
     )

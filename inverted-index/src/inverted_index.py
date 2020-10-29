@@ -1,18 +1,15 @@
 from collections import defaultdict
 
 
-import pickle
+import struct
 
 
 class InvertedIndex:
     def __init__(self, documents: dict):
-        self.inverted_index = defaultdict(list)
-        for i, document in documents.items():
-            for term in document.split():
-                term = term.strip(",.!?")
-                if i not in self.inverted_index[term]:
-                    self.inverted_index[term].append(i)
+        self.inverted_index = documents
 
+    def __eq__(self, other):
+        return self.inverted_index == other.inverted_index
 
     def query(self, words: list) -> list:
         """Return the list of relevant documents for the given query"""
@@ -26,12 +23,34 @@ class InvertedIndex:
 
     def dump(self, filepath: str):
         with open(filepath, "wb") as fout:
-            pickle.dump(self.inverted_index, fout)
+            fout.write(struct.pack("I", len(self.inverted_index)))
+            for key, vals in self.inverted_index.items():
+                key = bytes(key, 'utf-8')
+                fout.write(struct.pack(f"I{len(key)}s", len(key), key))
+                fout.write(struct.pack("I", len(vals)))
+                for val in vals:
+                    val = bytes(val, 'utf-8')
+                    # fout.write(struct.pack(f"I", val))
+                    fout.write(struct.pack(f"I{len(val)}s", len(val), val))
 
     @classmethod
     def load(cls, filepath: str):
         with open(filepath, "rb") as fin:
-            inverted_index = pickle.load(fin)
+            encoding = 'utf-8'
+            data = fin.read()
+            (index_len,), data = struct.unpack("I", data[:4]), data[4:]
+            inverted_index = defaultdict(list)
+
+            for _ in range(index_len):
+                (key_len,), data = struct.unpack("I", data[:4]), data[4:]
+                key, data = data[:key_len].decode(encoding), data[key_len:]
+                (vals_num,), data = struct.unpack("I", data[:4]), data[4:]
+                for _ in range(vals_num):
+                    (val_len,), data = struct.unpack("I", data[:4]), data[4:]
+                    val, data = data[:val_len].decode(encoding), data[val_len:]
+                    inverted_index[key].append(val)
+
+            inverted_index = InvertedIndex(inverted_index)
             return inverted_index
 
 
@@ -45,8 +64,14 @@ def load_documents(filepath: str) -> dict:
 
 
 def build_inverted_index(documents: dict) -> InvertedIndex:
-    result =  InvertedIndex(documents)
-    return result
+    inverted_index = defaultdict(list)
+    for i, document in documents.items():
+        for term in document.split():
+            term = term.strip(",.!?")
+            if i not in inverted_index[term]:
+                inverted_index[term].append(i)
+    inverted_index = InvertedIndex(inverted_index)
+    return inverted_index
 
 
 def main():
