@@ -1,6 +1,5 @@
 from collections import defaultdict
-
-
+import re
 import struct
 
 
@@ -16,9 +15,9 @@ class InvertedIndex:
         result = set()
         for word in words:
             if len(result) == 0:
-                result.update(self.inverted_index[word])
+                result.update(self.inverted_index[word.lower()])
             else:
-                result = result & set(self.inverted_index[word])
+                result = result & set(self.inverted_index[word.lower()])
         return list(result)
 
     def dump(self, filepath: str):
@@ -29,9 +28,7 @@ class InvertedIndex:
                 fout.write(struct.pack(f"I{len(key)}s", len(key), key))
                 fout.write(struct.pack("I", len(vals)))
                 for val in vals:
-                    val = bytes(val, 'utf-8')
-                    # fout.write(struct.pack(f"I", val))
-                    fout.write(struct.pack(f"I{len(val)}s", len(val), val))
+                    fout.write(struct.pack("I", val))
 
     @classmethod
     def load(cls, filepath: str):
@@ -46,8 +43,7 @@ class InvertedIndex:
                 key, data = data[:key_len].decode(encoding), data[key_len:]
                 (vals_num,), data = struct.unpack("I", data[:4]), data[4:]
                 for _ in range(vals_num):
-                    (val_len,), data = struct.unpack("I", data[:4]), data[4:]
-                    val, data = data[:val_len].decode(encoding), data[val_len:]
+                    (val,), data = struct.unpack("I", data[:4]), data[4:]
                     inverted_index[key].append(val)
 
             inverted_index = InvertedIndex(inverted_index)
@@ -59,27 +55,36 @@ def load_documents(filepath: str) -> dict:
     with open(filepath, "r") as fin:
         for line in fin:
             line = line.strip().split(sep='\t')
-            result[line[0]] = line[1]
+            result[int(line[0])] = line[1]
     return result
+
+
+def load_stop_words(filepath: str) -> str:
+    with open(filepath, "r") as fin:
+        return fin.read().strip()
 
 
 def build_inverted_index(documents: dict) -> InvertedIndex:
     inverted_index = defaultdict(list)
+    stop_words = load_stop_words("../resources/stop_words_en.txt")
     for i, document in documents.items():
-        for term in document.split():
-            term = term.strip(",.!?")
-            if i not in inverted_index[term]:
+        document = re.sub(r"\W+", " ", document)
+        for term in document.lower().split():
+            if (re.search(term, stop_words) is None) and (i not in inverted_index[term]):
                 inverted_index[term].append(i)
     inverted_index = InvertedIndex(inverted_index)
     return inverted_index
 
 
 def main():
-    documents = load_documents("../resources/wikipedia_sample")
+    documents = load_documents("../resources/tiny_wikipedia_sample")
+    # stop_words = load_stop_words("../resources/stop_words_en.txt")
     inverted_index = build_inverted_index(documents)
-    inverted_index.dump("/path/to/inverted.index")
-    inverted_index = InvertedIndex.load("/path/to/inverted.index")
-    document_ids = inverted_index.query(["two", "words"])
+    path = "../resources/tiny_dump_3"
+    # inverted_index.dump(path)
+    inverted_index = InvertedIndex.load(path)
+    print(inverted_index.inverted_index)
+    # document_ids = inverted_index.query(["two", "words"])
 
 
 if __name__ == "__main__":

@@ -13,10 +13,10 @@ DATASET_TINY_FPATH = "../resources/tiny_wikipedia_sample"
 def test_can_load_documents_v1():
     documents = load_documents(DATASET_TINY_FPATH)
     etalon_documents = {
-        "123": "some words A_word and nothing",
-        "2": "some word B_word in this dataset",
-        "5": "famous_phrases to be or not to be",
-        "37": "all words such as A_word and B_word are here",
+        123: "some words A_word and nothing",
+        2: "some word B_word in this dataset",
+        5: "famous_phrases to be or not to be",
+        37: "all words such as A_word and B_word are here",
     }
     assert etalon_documents == documents, (
         "load_documents incorrectly loaded dataset"
@@ -34,10 +34,10 @@ def test_can_load_documents_v2(tmpdir):
     dataset_fio.write(dataset_str)
     documents = load_documents(dataset_fio)
     etalon_documents = {
-        "123": "some words A_word and nothing",
-        "2": "some word B_word in this dataset",
-        "5": "famous_phrases to be or not to be",
-        "37": "all words such as A_word and B_word are here",
+        123: "some words A_word and nothing",
+        2: "some word B_word in this dataset",
+        5: "famous_phrases to be or not to be",
+        37: "all words such as A_word and B_word are here",
     }
     assert etalon_documents == documents, (
         "load_documents incorrectly loaded dataset"
@@ -62,10 +62,10 @@ def tiny_dataset_fio(tmpdir):
 def test_can_load_documents(tiny_dataset_fio):
     documents = load_documents(tiny_dataset_fio)
     etalon_documents = {
-        "123": "some words A_word and nothing",
-        "2": "some word B_word in this dataset",
-        "5": "famous_phrases to be or not to be",
-        "37": "all words such as A_word and B_word are here",
+        123: "some words A_word and nothing",
+        2: "some word B_word in this dataset",
+        5: "famous_phrases to be or not to be",
+        37: "all words such as A_word and B_word are here",
     }
     assert etalon_documents == documents, (
         "load_documents incorrectly loaded dataset"
@@ -75,9 +75,9 @@ def test_can_load_documents(tiny_dataset_fio):
 @pytest.mark.parametrize(
     "query, etalon_answer",
     [
-        pytest.param(["A_word"], ["123", "37"], id="A_word"),
-        pytest.param(["B_word"], ["2", "37"], id="B_word"),
-        pytest.param(["A_word", "B_word"], ["37"], id="both_words"),
+        pytest.param(["A_word"], [123, 37], id="A_word"),
+        pytest.param(["B_word"], [2, 37], id="B_word"),
+        pytest.param(["A_word", "B_word"], [37], id="both_words"),
         pytest.param(["word_does_not_exist"], [], id="word does not exist"),
     ],
 )
