@@ -150,7 +150,7 @@ def test_can_dump_and_load_inverted_index(tmpdir, wikipedia_inverted_index):
     ("filepath",),
     [
         pytest.param(DATASET_SMALL_FPATH, id="small dataset"),
-        pytest.param(DATASET_BIG_FPATH, marks=[pytest.mark.skipif(1 == 0, reason="I'm lazy")], id="big dataset"),
+        # pytest.param(DATASET_BIG_FPATH, marks=[pytest.mark.slow], id="big dataset"),
     ],
 )
 @pytest.mark.skip
@@ -202,7 +202,7 @@ def test_callback_query_can_process_queries_from_provided_file():
     [
         DATASET_TINY_FPATH,
         DATASET_SMALL_FPATH,
-        pytest.param(DATASET_BIG_FPATH, marks=[pytest.mark.slow]),
+        # pytest.param(DATASET_BIG_FPATH, marks=[pytest.mark.slow]),
     ],
 )
 def test_process_build_can_load_documents(dataset_filepath):

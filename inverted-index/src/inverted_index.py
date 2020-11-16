@@ -1,12 +1,20 @@
 #!/usr/bin/env python3
 
+"""
+InvertedIndex class provides functionality
+to build and query inverted index.
+
+Use load_documents to load a file into memory.
+Use build_inverted_index to construct an InvertedIndex object.
+"""
+
 from argparse import ArgumentDefaultsHelpFormatter
 from argparse import ArgumentParser
 from argparse import ArgumentTypeError
 from argparse import FileType
-from collections import defaultdict#, Counter
+from collections import defaultdict
 from io import TextIOWrapper
-import re
+# import re
 import struct
 import sys
 
@@ -16,7 +24,9 @@ DEFAULT_STOPWORDS_PATH = "../resources/stop_words_en.txt"
 
 
 class EncodedFileType(FileType):
+    """FileType extension for stdin/stdout with encoding"""
     def __call__(self, string):
+        """Overrided __call__ method of the FileType class"""
         # the special argument "-" means sys.std{in,out}
         if string == '-':
             if 'r' in self._mode:
@@ -26,19 +36,18 @@ class EncodedFileType(FileType):
                 stdout = TextIOWrapper(sys.stdout.buffer, encoding=self._encoding)
                 return stdout
             else:
-                msg = 'argument "-" with mode %r' % self._mode
-                raise ValueError(msg)
+                raise ValueError(f'argument "-" with mode {self._mode}')
 
         # all other arguments are used as file names
         try:
             return open(string, self._mode, self._bufsize, self._encoding,
                         self._errors)
-        except OSError as e:
-            message = "can't open '%s': %s"
-            raise ArgumentTypeError(message % (string, e))
+        except OSError as error:
+            raise ArgumentTypeError(f"can't open '{string}': {error}")
 
 
 class InvertedIndex:
+    """Inverted index class implementation"""
     def __init__(self, documents: dict):
         self.inverted_index = documents
 
@@ -54,12 +63,13 @@ class InvertedIndex:
         result = set()
         for word in words:
             if len(result) == 0:
-                result |= set(self.inverted_index[word])
+                result |= self.inverted_index[word]
             else:
-                result &= set(self.inverted_index[word])
+                result &= self.inverted_index[word]
         return list(result)
 
     def dump(self, filepath: str):
+        """Write inverted index to disk"""
         with open(filepath, "wb") as fout:
             fout.write(struct.pack("I", len(self.inverted_index)))
             for key, vals in self.inverted_index.items():
@@ -71,12 +81,13 @@ class InvertedIndex:
 
     @classmethod
     def load(cls, filepath: str):
-        # print(f"load inverted index from filepath {filepath}", file=sys.stderr)
+        """Load inverted index from disk"""
+        print(f"load inverted index from filepath {filepath}", file=sys.stderr)
         with open(filepath, "rb") as fin:
             encoding = 'utf-8'
             data = fin.read()
             (index_len,), data = struct.unpack("I", data[:4]), data[4:]
-            inverted_index = defaultdict(list)
+            inverted_index = defaultdict(set)
 
             for _ in range(index_len):
                 (key_len,), data = struct.unpack("I", data[:4]), data[4:]
@@ -84,7 +95,7 @@ class InvertedIndex:
                 (vals_num,), data = struct.unpack("I", data[:4]), data[4:]
                 for _ in range(vals_num):
                     (val,), data = struct.unpack("I", data[:4]), data[4:]
-                    inverted_index[key].append(val)
+                    inverted_index[key].add(val)
 
             inverted_index = InvertedIndex(inverted_index)
             return inverted_index
@@ -95,50 +106,52 @@ def load_documents(filepath: str) -> dict:
     result = {}
     with open(filepath, "r") as fin:
         for article in fin:
-            article = article.strip().split(sep='\t')
+            article = article.strip().split(sep='\t', maxsplit=1)
             result[int(article[0])] = article[1]
-            # word_stat = Counter(article[1].split())
     return result
 
 
-def load_stop_words(filepath: str) -> str:
-    """Load stop words from file"""
-    with open(filepath, "r") as fin:
-        return fin.read().strip()
+# def load_stop_words(filepath: str) -> str:
+    # """Load stop words from file"""
+    # with open(filepath, "r") as fin:
+        # return fin.read().strip()
 
 
 def build_inverted_index(documents: dict) -> InvertedIndex:
     """Build inverted index for provided documents"""
-    inverted_index = defaultdict(list)
+    inverted_index = defaultdict(set)
     # stop_words = load_stop_words(DEFAULT_STOPWORDS_PATH)
     for i, document in documents.items():
         # document = re.sub(r"\W+", " ", document)
         # for term in document.lower().split():
         for term in document.split():
             # if (re.search(term, stop_words) is None) and (i not in inverted_index[term]):
-            if i not in inverted_index[term]:
-                inverted_index[term].append(i)
+            # if i not in inverted_index[term]:
+            inverted_index[term].add(i)
     inverted_index = InvertedIndex(inverted_index)
     return inverted_index
 
 
 def callback_build(arguments):
+    """Callback function to build the inverted index"""
     return process_build(arguments.dataset_filepath, arguments.inverted_index_filepath)
 
 
 def process_build(dataset_filepath, inverted_index_filepath):
+    """The function that builds the inverted index"""
     documents = load_documents(dataset_filepath)
     inverted_index = build_inverted_index(documents)
     inverted_index.dump(inverted_index_filepath)
 
 
 def callback_query(arguments):
+    """Callback function to query against the inverted index"""
     return process_queries(arguments.inverted_index_filepath, arguments.query_file)
 
 
 def process_queries(inverted_index_filepath, query_file):
+    """The function that performs querying against the inverted index"""
     inverted_index = InvertedIndex.load(inverted_index_filepath)
-    print(inverted_index.inverted_index)
     for query in query_file:
         query = query.strip()
         print(f"Use the following query to run against InvertedIndex: {query}")
@@ -147,6 +160,7 @@ def process_queries(inverted_index_filepath, query_file):
 
 
 def setup_parser(parser):
+    """The function to setup parser arguments"""
     subparsers = parser.add_subparsers(help="choose command")
 
     build_parser = subparsers.add_parser(
@@ -198,16 +212,8 @@ def setup_parser(parser):
     query_parser.set_defaults(callback=callback_query)
 
 
-def process_arguments(dataset_filepath: str, query: list) -> list:
-    documents = load_documents(dataset_filepath)
-    inverted_index = build_inverted_index(documents)
-    # inverted_index.dump(path)
-    # inverted_index = InvertedIndex.load(path)
-    document_ids = inverted_index.query(query)
-    return document_ids
-
-
 def main():
+    """Main module function"""
     parser = ArgumentParser(
         prog="inverted-index",
         description="A tool to build, dump, load, and query inverted index.",
@@ -215,17 +221,7 @@ def main():
     )
     setup_parser(parser)
     arguments = parser.parse_args()
-    # print(arguments)
-
     arguments.callback(arguments)
-    
-    # documents = load_documents("../resources/tiny_wikipedia_sample")
-    # stop_words = load_stop_words("../resources/stop_words_en.txt")
-    # path = "../resources/tiny_dump_3"
-    # inverted_index.dump(path)
-    # inverted_index = InvertedIndex.load(path)
-    # print(inverted_index.inverted_index)
-    # document_ids = inverted_index.query(["two", "words"])
 
 
 if __name__ == "__main__":
