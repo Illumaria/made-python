@@ -1,8 +1,13 @@
+from argparse import Namespace
 from textwrap import dedent
 
 import pytest
 
-from inverted_index import InvertedIndex, build_inverted_index, load_documents
+from inverted_index import InvertedIndex
+from inverted_index import build_inverted_index
+from inverted_index import DEFAULT_INVERTED_INDEX_SAVE_PATH
+from inverted_index import callback_query, process_queries, process_build
+from inverted_index import load_documents
 from storage_policy import ArrayStoragePolicy
 
 DATASET_BIG_FPATH = "../resources/wikipedia_sample"
@@ -168,3 +173,37 @@ def test_can_dump_and_load_inverted_index_with_array_policy_parametrized(filepat
     assert etalon_inverted_index == loaded_inverted_index, (
         "load should return the same inverted index"
     )
+
+
+def test_process_queries_can_process_queries_from_provided_file(capsys):
+    with open("queries.txt") as queries_fin:
+        process_queries(
+            inverted_index_filepath=DEFAULT_INVERTED_INDEX_SAVE_PATH,
+            query_file=queries_fin,
+        )
+        captured = capsys.readouterr()
+        assert "load inverted index" not in captured.out
+        assert "load inverted index" in captured.err
+        assert "two words" in captured.out
+        assert "two words" not in captured.err
+
+
+def test_callback_query_can_process_queries_from_provided_file():
+    with open("queries.txt") as queries_fin:
+        query_arguments = Namespace(
+            inverted_index_filepath=DEFAULT_INVERTED_INDEX_SAVE_PATH,
+            query_file=queries_fin,
+        )
+        callback_query(query_arguments)
+
+
+@pytest.mark.parametrize(
+    "dataset_filepath",
+    [
+        DATASET_TINY_FPATH,
+        DATASET_SMALL_FPATH,
+        pytest.param(DATASET_BIG_FPATH, marks=[pytest.mark.slow]),
+    ],
+)
+def test_process_build_can_load_documents(dataset_filepath):
+    process_build(dataset_filepath, "inverted.index")
