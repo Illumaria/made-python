@@ -6,7 +6,8 @@ import pytest
 from inverted_index import InvertedIndex
 from inverted_index import build_inverted_index
 from inverted_index import DEFAULT_INVERTED_INDEX_SAVE_PATH
-from inverted_index import callback_query, process_queries, process_build
+from inverted_index import callback_query, process_queries
+from inverted_index import callback_build, process_build
 from inverted_index import load_documents
 from storage_policy import ArrayStoragePolicy
 
@@ -146,55 +147,33 @@ def test_can_dump_and_load_inverted_index(tmpdir, wikipedia_inverted_index):
     )
 
 
-@pytest.mark.parametrize(
-    ("filepath",),
-    [
-        pytest.param(DATASET_SMALL_FPATH, id="small dataset"),
-        # pytest.param(DATASET_BIG_FPATH, marks=[pytest.mark.slow], id="big dataset"),
-    ],
-)
-@pytest.mark.skip
-def test_can_dump_and_load_inverted_index_with_array_policy_parametrized(filepath, tmpdir):
-    index_fio = tmpdir.join("index.dump")
-
-    documents = load_documents(filepath)
-    etalon_inverted_index = build_inverted_index(documents)
-
-    # class StoragePolicy:
-    #     @staticmethod
-    #     def dump(word_to_docs_mapping, filepath):
-    #         pass
-    #
-    #     @staticmethod
-    #     def load(filepath):#         pass
-
-    etalon_inverted_index.dump(index_fio, storage_policy=ArrayStoragePolicy)
-    loaded_inverted_index = InvertedIndex.load(index_fio, storage_policy=ArrayStoragePolicy)
-    assert etalon_inverted_index == loaded_inverted_index, (
-        "load should return the same inverted index"
-    )
-
-
-def test_process_queries_can_process_queries_from_provided_file(capsys):
-    with open("queries.txt") as queries_fin:
-        process_queries(
-            inverted_index_filepath=DEFAULT_INVERTED_INDEX_SAVE_PATH,
-            query_file=queries_fin,
-        )
-        captured = capsys.readouterr()
-        assert "load inverted index" not in captured.out
-        assert "load inverted index" in captured.err
-        assert "two words" in captured.out
-        assert "two words" not in captured.err
-
-
-def test_callback_query_can_process_queries_from_provided_file():
-    with open("queries.txt") as queries_fin:
-        query_arguments = Namespace(
-            inverted_index_filepath=DEFAULT_INVERTED_INDEX_SAVE_PATH,
-            query_file=queries_fin,
-        )
-        callback_query(query_arguments)
+# @pytest.mark.parametrize(
+#     ("filepath",),
+#     [
+#         pytest.param(DATASET_SMALL_FPATH, id="small dataset"),
+#         # pytest.param(DATASET_BIG_FPATH, marks=[pytest.mark.slow], id="big dataset"),
+#     ],
+# )
+# @pytest.mark.skip
+# def test_can_dump_and_load_inverted_index_with_array_policy_parametrized(filepath, tmpdir):
+#     index_fio = tmpdir.join("index.dump")
+# 
+#     documents = load_documents(filepath)
+#     etalon_inverted_index = build_inverted_index(documents)
+# 
+#     # class StoragePolicy:
+#     #     @staticmethod
+#     #     def dump(word_to_docs_mapping, filepath):
+#     #         pass
+#     #
+#     #     @staticmethod
+#     #     def load(filepath):#         pass
+# 
+#     etalon_inverted_index.dump(index_fio, storage_policy=ArrayStoragePolicy)
+#     loaded_inverted_index = InvertedIndex.load(index_fio, storage_policy=ArrayStoragePolicy)
+#     assert etalon_inverted_index == loaded_inverted_index, (
+#         "load should return the same inverted index"
+#     )
 
 
 @pytest.mark.parametrize(
@@ -207,3 +186,41 @@ def test_callback_query_can_process_queries_from_provided_file():
 )
 def test_process_build_can_load_documents(dataset_filepath):
     process_build(dataset_filepath, "inverted.index")
+
+
+@pytest.mark.parametrize(
+    "dataset_filepath",
+    [
+        DATASET_TINY_FPATH,
+        DATASET_SMALL_FPATH,
+        # pytest.param(DATASET_BIG_FPATH, marks=[pytest.mark.slow]),
+    ],
+)
+def test_callback_build_can_build_inverted_index_from_provided_file(dataset_filepath):
+    build_arguments = Namespace(
+        dataset_filepath=dataset_filepath,
+        inverted_index_filepath=DEFAULT_INVERTED_INDEX_SAVE_PATH,
+    )
+    callback_build(build_arguments)
+
+
+def test_process_queries_can_process_queries_from_provided_file(capsys):
+    with open("queries-utf8.txt") as queries_fin:
+        process_queries(
+            inverted_index_filepath=DEFAULT_INVERTED_INDEX_SAVE_PATH,
+            query_file=queries_fin,
+        )
+        captured = capsys.readouterr()
+        assert "load inverted index" not in captured.out
+        assert "load inverted index" in captured.err
+        assert "two words" in captured.out
+        assert "two words" not in captured.err
+
+
+def test_callback_query_can_process_queries_from_provided_file():
+    with open("queries-utf8.txt") as queries_fin:
+        query_arguments = Namespace(
+            inverted_index_filepath=DEFAULT_INVERTED_INDEX_SAVE_PATH,
+            query_file=queries_fin,
+        )
+        callback_query(query_arguments)

@@ -36,14 +36,14 @@ class EncodedFileType(FileType):
                 stdout = TextIOWrapper(sys.stdout.buffer, encoding=self._encoding)
                 return stdout
             else:
-                raise ValueError(f'argument "-" with mode {self._mode}')
+                raise ValueError(f'Argument "-" with mode {self._mode}.')
 
         # all other arguments are used as file names
         try:
             return open(string, self._mode, self._bufsize, self._encoding,
                         self._errors)
         except OSError as error:
-            raise ArgumentTypeError(f"can't open '{string}': {error}")
+            raise ArgumentTypeError(f"Can't open '{string}': {error}.")
 
 
 class InvertedIndex:
@@ -57,44 +57,42 @@ class InvertedIndex:
     def query(self, words: list) -> list:
         """Return the list of relevant documents for the given query"""
         assert isinstance(words, list), (
-            "query should be provided with a list of words, but user provided: "
-            f"{repr(words)}"
+            "Query should be provided with a list of words, but user provided: "
+            f"{repr(words)}."
         )
-        result = set()
+        result = self.inverted_index[words[0]]
         for word in words:
-            if len(result) == 0:
-                result |= self.inverted_index[word]
-            else:
-                result &= self.inverted_index[word]
+            result &= self.inverted_index[word]
         return list(result)
 
     def dump(self, filepath: str):
         """Write inverted index to disk"""
         with open(filepath, "wb") as fout:
-            fout.write(struct.pack("I", len(self.inverted_index)))
+            fout.write(struct.pack(">I", len(self.inverted_index)))
             for key, vals in self.inverted_index.items():
                 key = bytes(key, 'utf-8')
-                fout.write(struct.pack(f"I{len(key)}s", len(key), key))
-                fout.write(struct.pack("I", len(vals)))
+                fout.write(struct.pack(f">H{len(key)}s", len(key), key))
+                fout.write(struct.pack(">H", len(vals)))
                 for val in vals:
-                    fout.write(struct.pack("I", val))
+                    fout.write(struct.pack(">H", val))
 
     @classmethod
     def load(cls, filepath: str):
         """Load inverted index from disk"""
-        print(f"load inverted index from filepath {filepath}", file=sys.stderr)
+        print(f"Load inverted index from filepath {filepath}.",
+              file=sys.stderr)
         with open(filepath, "rb") as fin:
             encoding = 'utf-8'
             data = fin.read()
-            (index_len,), data = struct.unpack("I", data[:4]), data[4:]
+            (index_len,), data = struct.unpack(">I", data[:4]), data[4:]
             inverted_index = defaultdict(set)
 
             for _ in range(index_len):
-                (key_len,), data = struct.unpack("I", data[:4]), data[4:]
+                (key_len,), data = struct.unpack(">H", data[:2]), data[2:]
                 key, data = data[:key_len].decode(encoding), data[key_len:]
-                (vals_num,), data = struct.unpack("I", data[:4]), data[4:]
+                (vals_num,), data = struct.unpack(">H", data[:2]), data[2:]
                 for _ in range(vals_num):
-                    (val,), data = struct.unpack("I", data[:4]), data[4:]
+                    (val,), data = struct.unpack(">H", data[:2]), data[2:]
                     inverted_index[key].add(val)
 
             inverted_index = InvertedIndex(inverted_index)
@@ -104,10 +102,14 @@ class InvertedIndex:
 def load_documents(filepath: str) -> dict:
     """Load documents to build inverted index"""
     result = {}
+    # try:
     with open(filepath, "r") as fin:
         for article in fin:
             article = article.strip().split(sep='\t', maxsplit=1)
             result[int(article[0])] = article[1]
+    # except FileNotFoundError:
+        # print(f"Wrong file or filepath: {filepath}")
+        # return None
     return result
 
 
@@ -133,19 +135,20 @@ def build_inverted_index(documents: dict) -> InvertedIndex:
 
 
 def callback_build(arguments):
-    """Callback function to build the inverted index"""
+    """Callback function for "build" argument"""
     return process_build(arguments.dataset_filepath, arguments.inverted_index_filepath)
 
 
 def process_build(dataset_filepath, inverted_index_filepath):
     """The function that builds the inverted index"""
     documents = load_documents(dataset_filepath)
+    # if documents is not None:
     inverted_index = build_inverted_index(documents)
     inverted_index.dump(inverted_index_filepath)
 
 
 def callback_query(arguments):
-    """Callback function to query against the inverted index"""
+    """Callback function for "query" argument"""
     return process_queries(arguments.inverted_index_filepath, arguments.query_file)
 
 
@@ -153,9 +156,10 @@ def process_queries(inverted_index_filepath, query_file):
     """The function that performs querying against the inverted index"""
     inverted_index = InvertedIndex.load(inverted_index_filepath)
     for query in query_file:
-        query = query.strip()
-        print(f"Use the following query to run against InvertedIndex: {query}")
-        result = inverted_index.query(query.split())
+        query = query.strip().split()
+        print(f"Use the following query to run against InvertedIndex: {query}",
+              file=sys.stderr)
+        result = inverted_index.query(query)
         print(",".join([str(x) for x in result]))
 
 
@@ -208,6 +212,13 @@ def setup_parser(parser):
         type=EncodedFileType("r", encoding="cp1251"),
         default=TextIOWrapper(sys.stdin.buffer, encoding="cp1251"),
         help="query file to get queries for inverted index",
+    )
+    query_file_group.add_argument(
+        "--query",
+        dest="query_file",
+        metavar="QUERY_STRING",
+        default=TextIOWrapper(sys.stdin.buffer, encoding="utf-8"),
+        help="query string to get queries for inverted index",
     )
     query_parser.set_defaults(callback=callback_query)
 
