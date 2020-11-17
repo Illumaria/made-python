@@ -83,16 +83,16 @@ class InvertedIndex:
               file=sys.stderr)
         with open(filepath, "rb") as fin:
             encoding = 'utf-8'
-            data = fin.read()
-            (index_len,), data = struct.unpack(">I", data[:4]), data[4:]
+
+            index_len = struct.unpack(">I", fin.read(4))[0]
             inverted_index = defaultdict(set)
 
             for _ in range(index_len):
-                (key_len,), data = struct.unpack(">H", data[:2]), data[2:]
-                key, data = data[:key_len].decode(encoding), data[key_len:]
-                (vals_num,), data = struct.unpack(">H", data[:2]), data[2:]
+                key_len = struct.unpack(">H", fin.read(2))[0]
+                key = struct.unpack(f">{key_len}s", fin.read(key_len))[0].decode(encoding)
+                vals_num = struct.unpack(">H", fin.read(2))[0]
                 for _ in range(vals_num):
-                    (val,), data = struct.unpack(">H", data[:2]), data[2:]
+                    val = struct.unpack(">H", fin.read(2))[0]
                     inverted_index[key].add(val)
 
             inverted_index = InvertedIndex(inverted_index)
@@ -155,10 +155,12 @@ def callback_query(arguments):
 def process_queries(inverted_index_filepath, query_file):
     """The function that performs querying against the inverted index"""
     inverted_index = InvertedIndex.load(inverted_index_filepath)
+    if isinstance(query_file, str):
+        query_file = [query_file]
     for query in query_file:
         query = query.strip().split()
         print(f"Use the following query to run against InvertedIndex: {query}",
-              file=sys.stderr)
+            file=sys.stderr)
         result = inverted_index.query(query)
         print(",".join([str(x) for x in result]))
 
