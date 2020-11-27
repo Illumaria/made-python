@@ -1,1 +1,2 @@
-# made-python-2020
+# Python (MADE 2020)
+This repository contains Python course projects.
