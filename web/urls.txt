@@ -1,0 +1,2 @@
+URL_GITHUB_API = "https://api.github.com"
+URL_AUTH_TEST = "https://jigsaw.w3.org/HTTP/Basic/"
