@@ -16,13 +16,17 @@ from collections import defaultdict
 from io import TextIOWrapper
 # import re
 import logging
+import logging.config
 import struct
 import sys
+
+import yaml
 
 APPLICATION_NAME = "inverted_index"
 DEFAULT_DATASET_PATH = "../resources/wikipedia_sample"
 DEFAULT_INVERTED_INDEX_SAVE_PATH = "inverted.index"
 DEFAULT_STOPWORDS_PATH = "../resources/stop_words_en.txt"
+DEFAULT_LOGGING_CONFIG_FILEPATH = "logging.conf.yml"
 
 
 logger = logging.getLogger(APPLICATION_NAME)
@@ -234,30 +238,8 @@ def setup_parser(parser):
 
 
 def setup_logging():
-    # logger = logging.getLogger(__name__)
-    # logging.basicConfig(
-    #     filename="inverted_index.log",
-    #     format="%(asctime)s %(levelname)s %(message)s",
-    #     datefmt="%Y-%m-%d %H:%M:%S",
-    #     level=logging.DEBUG,
-    # )
-
-    simple_formatter = logging.Formatter(
-        fmt="%(asctime)s %(name)s %(levelname)s %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-    file_handler = logging.FileHandler(
-        filename="inverted_index.log",
-    )
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(simple_formatter)
-
-    logger = logging.getLogger(APPLICATION_NAME)
-    logger.setLevel(logging.DEBUG)
-    logging.addHandler(file_handler)
-
-    logger = logging.getLogger()
-    logger.addHandler(file_handler)
+    with open(DEFAULT_LOGGING_CONFIG_FILEPATH) as config_fin:
+    	logging.config.dictConfig(yaml.safe_load(config_fin))
 
 
 def main():

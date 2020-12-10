@@ -1,0 +1,12 @@
+2020-12-05 00:04:36 inverted_index DEBUG Call build subcommand with arguments: ../resources/wikipedia_sample and inverted.index
+2020-12-05 00:04:36 inverted_index INFO Building inverted index for provided documents...
+2020-12-05 00:05:18 inverted_index INFO Read queries from file: <_io.TextIOWrapper name='queries-cp1251.txt' mode='r' encoding='cp1251'>
+2020-12-05 00:05:18 inverted_index INFO Load inverted index from filepath: inverted.index
+2020-12-05 00:05:24 inverted_index DEBUG Use the following query to run against InvertedIndex: ['two', 'words']
+2020-12-05 00:05:24 inverted_index DEBUG Query inverted index with request: ['two', 'words']
+2020-12-05 00:05:24 inverted_index DEBUG Use the following query to run against InvertedIndex: ['some', 'words']
+2020-12-05 00:05:24 inverted_index DEBUG Query inverted index with request: ['some', 'words']
+2020-12-05 00:05:24 inverted_index DEBUG Use the following query to run against InvertedIndex: ['два', 'слова']
+2020-12-05 00:05:24 inverted_index DEBUG Query inverted index with request: ['два', 'слова']
+2020-12-05 00:05:24 inverted_index DEBUG Use the following query to run against InvertedIndex: ['ещё', 'несколько', 'слов']
+2020-12-05 00:05:24 inverted_index DEBUG Query inverted index with request: ['ещё', 'несколько', 'слов']

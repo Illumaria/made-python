@@ -2,9 +2,8 @@
 from argparse import ArgumentDefaultsHelpFormatter
 from argparse import ArgumentParser
 from argparse import ArgumentTypeError
-from argparse import FileType
 from collections import defaultdict
-from io import TextIOWrapper
+import json
 import logging
 from lxml import etree
 import re
@@ -14,42 +13,25 @@ APPLICATION_NAME = "stackoverflow_analytics"
 DEFAULT_APP_HANDLER_FPATH = "stackoverflow_analytics.log"
 DEFAULT_WARN_HANDLER_FPATH = "stackoverflow_analytics.warn"
 DEFAULT_QUERIES_FPATH = "queries_sample.csv"
-DEFAULT_SMALL_QUESTIONS_FPATH = "questions_sample.xml"
+DEFAULT_QUESTIONS_FPATH = "questions_sample.xml"
 DEFAULT_BIG_QUESTIONS_FPATH = "stackoverflow_posts_sample.xml"
 DEFAULT_STOP_WORDS_FPATH = "stop_words_in_koi8r.txt"
-
 
 
 logger = logging.getLogger(APPLICATION_NAME)
 
 
-class EncodedFileType(FileType):
-    """FileType extension for stdin/stdout with encoding"""
-    def __call__(self, string):
-        """Overrided __call__ method of the FileType class"""
-        # the special argument "-" means sys.std{in,out}
-        if string == '-':
-            if 'r' in self._mode:
-                stdin = TextIOWrapper(sys.stdin.buffer, encoding=self._encoding)
-                return stdin
-            elif 'w' in self._mode:
-                stdout = TextIOWrapper(sys.stdout.buffer, encoding=self._encoding)
-                return stdout
-            else:
-                raise ValueError(f'Argument "-" with mode {self._mode}.')
-
-        # all other arguments are used as file names
-        try:
-            return open(string, self._mode, self._bufsize, self._encoding,
-                        self._errors)
-        except OSError as error:
-            raise ArgumentTypeError(f"Can't open '{string}': {error}.")
+def load_stop_words(filepath) -> set:
+    """Load stop words from file"""
+    with open(filepath, "r", encoding="koi8-r") as fin:
+        stop_words = set(fin.read().splitlines())
+        return stop_words
 
 
-def load_questions(questions_filepath):
-    with open(DEFAULT_BIG_QUESTIONS_FPATH, "r") as fin:
-        content = fin.readlines()
-        print(len(content))
+def process_query(questions_filepath, stop_words, start_year, end_year, top_N):
+    answer = defaultdict(int)
+    with open(questions_filepath, "r", encoding="utf-8") as fin:
+        content = fin.read().splitlines()
         for line in content:
             root = etree.fromstring(line, parser=etree.XMLParser())
             if int(root.get("PostTypeId")) == 1:
@@ -57,19 +39,27 @@ def load_questions(questions_filepath):
                 year = int(root.get("CreationDate").split('-')[0])
                 title = root.get("Title")
                 title_tokens = re.findall("\w+", title.lower())
-                print(year, score, title_tokens)
-
-
-def load_stop_words(fin) -> set:
-    """Load stop words from file"""
-    # with open(filepath, "r") as fin:
-        # return fin.read().splitlines()
-    return set(fin.read().splitlines())
+                if start_year <= year <= end_year:
+                	for token in title_tokens:
+                		if token not in stop_words:
+                			answer[token] += score
+    answer = sorted(answer.items(), key=lambda x: (-x[1], x[0]))
+    answer = [list(x) for x in answer[:top_N]]
+    return answer
 
 
 def process_arguments(questions_filepath, stopwords_file, query_filepath):
-    questions = load_questions(questions_filepath)
     stop_words = load_stop_words(stopwords_file)
+    with open(query_filepath, "r") as query_fin:
+    	queries = query_fin.readlines()
+    	for query in queries:
+    		start_year, end_year, top_N = map(int, query.strip().split(','))
+    		answer = process_query(questions_filepath, stop_words, start_year, end_year, top_N)
+    		result = {}
+    		result["start"] = start_year
+    		result["end"] = end_year
+    		result["top"] = answer
+    		print(json.dumps(result))
 
 
 def callback_parser(arguments):
@@ -83,7 +73,7 @@ def setup_parser(parser):
     """The function to setup parser arguments"""
     parser.add_argument(
         "--questions",
-        default=DEFAULT_SMALL_QUESTIONS_FPATH,
+        default=DEFAULT_QUESTIONS_FPATH,
         dest="questions_filepath",
         help="path to questions in xml format",
     )
@@ -91,7 +81,6 @@ def setup_parser(parser):
         "--stop-words",
         default=DEFAULT_STOP_WORDS_FPATH,
         dest="stopwords_file",
-        type=EncodedFileType("r", encoding="koi8-r"),
         help="path to stop-words file in text format",
     )
     parser.add_argument(
